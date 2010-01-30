@@ -59,7 +59,8 @@ class sfTwigView extends sfPHPView
         )); 
         
         if ($this->twig->isDebug()) {
-            $this->twig->setCache(null);
+            // setChche is null = not work Escper Extension ... 
+            //$this->twig->setCache(null);
             $this->twig->setAutoReload(true);
         }
         
@@ -96,15 +97,21 @@ class sfTwigView extends sfPHPView
         
         //for now the extensions needs the original helpers so lets load thoose.
         $this->configuration->loadHelpers($prefixes);
-        
+       
+        $extensions = array(); 
         //Makes it possible to load custom twig extensions.
         foreach (sfConfig::get('sf_twig_extensions', array()) as $extension) {
             if (class_exists($extension)) {
-                $this->twig->addExtension(new $extension());
+                $extensions[$extension] = new $extension();
                 continue;
             }
             
             throw new InvalidArgumentException(sprintf('Unable to load "%s" as an Twig_Extension into Twig_Environment', $extension));
+        }
+        //dispach Extension
+        $extensionEvent = $this->dispatcher->filter(new sfEvent($this, 'template.twig_get_extensions'), $extensions);
+        foreach ($extensionEvent->getReturnValue() as $extensionObject) {
+            $this->twig->addExtension($extensionObject);
         }
     }
     
@@ -120,10 +127,11 @@ class sfTwigView extends sfPHPView
             $this->dispatcher->notify(new sfEvent($this, 'application.log', array(sprintf('Render "%s".', $file))));
         }
         
-        $this->loader->setPaths((array) realpath(dirname($file)));
+        $pathEvent = $this->dispatcher->filter(new sfEvent($this, 'template.twig_template_paths'), (array) realpath(dirname($file)));
+        $this->loader->setPaths($pathEvent->getReturnValue());
         
-        $event = $this->dispatcher->filter(new sfEvent($this, 'template.filter_parameters'), $this->attributeHolder->getAll());
+        $filterEvent = $this->dispatcher->filter(new sfEvent($this, 'template.filter_parameters'), $this->attributeHolder->getAll());
         
-        return $this->twig->loadTemplate(basename($file))->render($event->getReturnValue());
+        return $this->twig->loadTemplate(basename($file))->render($filterEvent->getReturnValue());
     }
 }
