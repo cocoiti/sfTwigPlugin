@@ -59,8 +59,6 @@ class sfTwigView extends sfPHPView
         )); 
         
         if ($this->twig->isDebug()) {
-            // setChche is null = not work Escper Extension ... 
-            //$this->twig->setCache(null);
             $this->twig->setAutoReload(true);
         }
         
